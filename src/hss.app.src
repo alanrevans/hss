@@ -1,0 +1,18 @@
+{application, hss,
+	[
+	{description, "Home Subscriber Server (HSS)"},
+	{id, "id"},
+	{vsn, "0.0.1"},
+	{modules, [hss_app, hss_sup, hss_server, hss, hss_xml, milenage]},
+	{maxP, infinity},
+	{maxT, infinity},
+	{registered, []},
+	{included_applications, [xmerl]},
+	{applications, [kernel, stdlib, mnesia, crypto]},
+	{env,
+		[{keep_unregistered_scscf, true},
+		{realms, ["realm.net", "realm.com"]}]},
+	{mod, {hss_app, []}},
+	{start_phases, []}
+	]
+}.

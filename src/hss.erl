@@ -88,7 +88,7 @@ add_subscriber(Subscriber) when is_record(Subscriber, subscriber) ->
 	case mnesia:activity(transaction, fun() ->
 			mnesia:write(Subscriber#subscriber{subscriberID
 					= SubscriberID}) end) of
-		{atomic, _Result} ->
+		ok ->
 			SubscriberID;
 		Error ->
 			error_logger:error_msg(mnesia:error_description(Error)),
@@ -131,7 +131,7 @@ add_profile(InitialFilterCriteriaIDs) when is_list(InitialFilterCriteriaIDs) ->
 			Profile = #profile{serviceProfileID = ServiceProfileID,
 					initialFilterCriteriaIDs = InitialFilterCriteriaIDs},
 			case mnesia:activity(transaction, fun() -> mnesia:write(Profile) end) of
-				{atomic, _Result} ->
+				ok ->
 					ServiceProfileID;
 				Error ->
 					error_logger:error_msg(mnesia:error_description(Error)),
@@ -220,7 +220,7 @@ add_user(#user{privateUserID = PrivateUserID} = User) ->
 							S#subscriber{privateUserIDs = PrivateUserIDs}, write)
 			end,
 			mnesia:write(user, User, write) end) of
-		{atomic, _Result} ->
+		ok ->
 			ok;
 		{aborted, Reason} = Error ->
 			error_logger:warning_msg(mnesia:error_description(Error)),
@@ -249,7 +249,7 @@ add_address(Address, {Node1, _Now1, Ref1} = SubscriberID,
 			[_Subscriber] = mnesia:read(subscriber, SubscriberID, read),
 			[_Profile] = mnesia:read(profile, ServiceProfileID, read),
 			mnesia:write(address, Address, write) end) of
-		{atomic, _Result} ->
+		ok ->
 			ok;
 		{aborted, Reason} = Error ->
 			error_logger:warning_msg(mnesia:error_description(Error)),

@@ -1215,23 +1215,24 @@ authentication_request(#authentication_request{
 				{privateUserID, PrivateUserID},
 				{publicUserID, PublicUserID}])
 	end,
-	case mnesia:activity(transaction, fun() ->
-			authentication_request1(ARQ, From, State) end) of
-		{atomic, Reply} ->
-			{reply, Reply, State};
-		{aborted, Reason} when Reason == user_unknown; 
-				Reason == identities_dont_match;
-				Reason == auth_scheme_unsupported ->
-			Ferr(Reason),
-			Reply = #authentication_request_response{
-					experimentalResult = Reason},
-			{reply, Reply, State};
-		{aborted, Reason} ->
-io:fwrite("Reason = ~p~n", [Reason]),
-			Ferr(unable_to_comply),
-			Reply = #authentication_request_response{
-					resultCode = unable_to_comply},
-			{reply, Reply, State}
+    case catch mnesia:activity(transaction, fun() ->
+		authentication_request1(ARQ, From, State) end) of
+	
+	{'EXIT', {aborted, Reason}} when Reason == user_unknown; 
+	                       Reason == identities_dont_match;
+	                       Reason == auth_scheme_unsupported ->
+		Ferr(Reason),
+		Reply = #authentication_request_response{
+	        experimentalResult = Reason},
+		{reply, Reply, State};
+	{'EXIT', {aborted, Reason}} ->
+        io:fwrite("Reason = ~p~n", [Reason]),
+		Ferr(unable_to_comply),
+		Reply = #authentication_request_response{
+				resultCode = unable_to_comply},
+		{reply, Reply, State};
+	Reply ->
+        {reply, Reply, State}
 	end.
 
 %% @spec (ARQ::authentication_request(), From::tuple(), State::state())
@@ -1361,7 +1362,9 @@ authentication_request5(#authentication_request{
 		#user{k = K, opc = OPc, sequence = SEQ} = U, _A, _S, [], [], []) ->
 	NewSEQ = (SEQ + 1) rem 16#7FFFFFFFFFF,
 	mnesia:write(user, U#user{sequence = NewSEQ}, write),
-	AuthenticationData = authentication_data(OPc, K, NewSEQ, NumItems),
+%%	AuthenticationData = authentication_data(OPc, K, NewSEQ, NumItems),
+    AuthenticationData = authentication_data(PrivateUserID, NumItems),
+
 	#authentication_request_response{
 			publicUserID = PublicUserID, privateUserID = PrivateUserID,
 			numberAuthenticationItems = NumItems,
@@ -1513,6 +1516,21 @@ get_registered_address(#user{privateUserID = PrivateUserID,
 %% 	N = integer()
 %% @doc Generate authentication data for response.
 %% @private
+authentication_data(PrivateUserID, NumItems) ->
+    [Imsi,_Realm] = string:tokens(PrivateUserID, [$@]),
+    {ok, [JObj]} = ss7c_if:auth_info(list_to_binary(Imsi), NumItems, rest),
+    Rand = <<(erlang:list_to_integer(binary_to_list(wh_json:get_ne_value(<<"rand">>, JObj)),16)):(16*8)>>,
+    Autn = <<(erlang:list_to_integer(binary_to_list(wh_json:get_ne_value(<<"autn">>, JObj)),16)):(16*8)>>,
+    Xres = <<(erlang:list_to_integer(binary_to_list(wh_json:get_ne_value(<<"xres">>, JObj)),16)):(8*8)>>,
+    Ck = <<(erlang:list_to_integer(binary_to_list(wh_json:get_ne_value(<<"ck">>, JObj)),16)):(16*8)>>,
+    Ik = <<(erlang:list_to_integer(binary_to_list(wh_json:get_ne_value(<<"ik">>, JObj)),16)):(16*8)>>,
+    [#authenticationData{itemNumber = 1,
+        authenticationScheme = "Digest-AKAv1-MD5",
+        authenticationInformation = <<Rand/binary, Autn/binary>>,
+        authorizationInformation = Xres,
+        confidentialityKey = Ck,
+        integrityKey = Ik}].
+        
 authentication_data(OPc, K, SEQ, N) ->
 	authentication_data(OPc, K, SEQ, N, []).
 %% @hidden

@@ -65,7 +65,7 @@
 %%
 init(_Args) ->
 	StartMod = hss_server,
-	StartFunc = {gen_server, start_link, [StartMod]},
+	StartFunc = {gen_server, start_link, [StartMod, normal, []]},
 	ChildSpec = {StartMod, StartFunc, permanent, 4000, worker, [StartMod]},
-	{ok, {{simple_one_for_one, 10, 60}, [ChildSpec]}}.
+	{ok, {{one_for_one, 10, 60}, [ChildSpec]}}.
 

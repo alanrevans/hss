@@ -62,14 +62,14 @@
 %%
 subscription(PrivateUserID, PublicUserIDs) ->
 	case mnesia:activity(transaction, fun() -> profiles(PublicUserIDs) end) of
-		{atomic, Profiles} ->
+        {aborted, Reason} ->
+            exit(Reason);
+		Profiles ->
 			Root = root(),
 			PrivateID = #xmlElement{name = 'PrivateID',
 					content = [#xmlText{value = PrivateUserID}]},
 			XML = Root#xmlElement{content = [PrivateID | Profiles]},
-			lists:flatten(xmerl:export([XML], xmerl_xml));
-		{aborted, Reason} ->
-			exit(Reason)
+			lists:flatten(xmerl:export([XML], xmerl_xml))
 	end.
 	
 %%----------------------------------------------------------------------

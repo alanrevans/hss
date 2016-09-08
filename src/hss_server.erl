@@ -122,6 +122,7 @@
 %%
 init(_Args) ->
 	process_flag(trap_exit, true),
+	true = register(hss, self()),
 	{ok, #state{}}.
 
 %% @spec (Request, From, State) -> Result
@@ -557,7 +558,7 @@ scscf_registration_notification(#scscf_registration_notification{
 					{privateUserID, PrivateUserID},
 					{publicUserID, PublicUserID}])
 	end,
-	case mnesia:activity(transaction, fun() ->
+	case mnesia:transaction(fun() ->
 			scscf_registration_notification1(SRN, From, State) end) of
 		{atomic, Reply} ->
 			{reply, Reply, State};
